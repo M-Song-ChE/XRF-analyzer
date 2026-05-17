@@ -341,17 +341,17 @@ class App(tk.Tk):
         s.theme_use('clam')
         s.configure('Outer.TFrame', background='#eceff1')
         s.configure('Side.TFrame',  background='#ffffff')
-        s.configure('TLabel',       background='#eceff1', font=('Segoe UI', 9))
-        s.configure('SideH.TLabel', background='#ffffff', font=('Segoe UI', 10, 'bold'),
+        s.configure('TLabel',       background='#eceff1', font=('Segoe UI', 11))
+        s.configure('SideH.TLabel', background='#ffffff', font=('Segoe UI', 12, 'bold'),
                     foreground='#1565c0')
-        s.configure('TButton',      font=('Segoe UI', 9), padding=4)
-        s.configure('Treeview',     font=('Segoe UI', 9), rowheight=22)
-        s.configure('Treeview.Heading', font=('Segoe UI', 9, 'bold'))
+        s.configure('TButton',      font=('Segoe UI', 11), padding=5)
+        s.configure('Treeview',     font=('Segoe UI', 22), rowheight=52)
+        s.configure('Treeview.Heading', font=('Segoe UI', 22, 'bold'))
 
     def _build_sidebar(self, parent):
-        tk.Label(parent, text="XRF Data Analyzer", font=('Segoe UI', 12, 'bold'),
+        tk.Label(parent, text="XRF Data Analyzer", font=('Segoe UI', 14, 'bold'),
                  fg='#1565c0', bg='white').pack(anchor='w', padx=12, pady=(12, 2))
-        tk.Label(parent, text="mass% → atomic fraction", font=('Segoe UI', 8),
+        tk.Label(parent, text="mass% → atomic fraction", font=('Segoe UI', 10),
                  fg='#607d8b', bg='white').pack(anchor='w', padx=12, pady=(0, 8))
 
         ttk.Separator(parent).pack(fill='x', padx=8)
@@ -365,7 +365,7 @@ class App(tk.Tk):
         vsb = ttk.Scrollbar(lb_frame)
         vsb.pack(side='right', fill='y')
         self.lb = tk.Listbox(lb_frame, yscrollcommand=vsb.set, selectmode='single',
-                             font=('Segoe UI', 9), height=7, activestyle='none',
+                             font=('Segoe UI', 11), height=7, activestyle='none',
                              bg='#f5f5f5', relief='solid', borderwidth=1,
                              highlightthickness=0)
         self.lb.pack(side='left', fill='both', expand=True)
@@ -390,12 +390,12 @@ class App(tk.Tk):
         ttk.Label(parent, text="Current View", style='SideH.TLabel').pack(
             anchor='w', padx=12, pady=(8, 2))
         self.view_var = tk.StringVar(value="—")
-        tk.Label(parent, textvariable=self.view_var, font=('Segoe UI', 9),
+        tk.Label(parent, textvariable=self.view_var, font=('Segoe UI', 11),
                  bg='white', fg='#e65100', wraplength=240,
                  justify='left').pack(anchor='w', padx=12)
 
         self.summary_var = tk.StringVar(value="No data loaded.")
-        tk.Label(parent, textvariable=self.summary_var, font=('Segoe UI', 9),
+        tk.Label(parent, textvariable=self.summary_var, font=('Segoe UI', 11),
                  bg='white', fg='#37474f', wraplength=240,
                  justify='left').pack(anchor='w', padx=12, pady=(4, 0))
 
@@ -405,7 +405,7 @@ class App(tk.Tk):
         ttk.Label(parent, text="Element Selection", style='SideH.TLabel').pack(
             anchor='w', padx=12, pady=(4, 2))
         tk.Label(parent, text="Click elements on the table to\ntoggle them in/out of the\ncomposition calculation.",
-                 font=('Segoe UI', 8), bg='white', fg='#607d8b',
+                 font=('Segoe UI', 10), bg='white', fg='#607d8b',
                  justify='left').pack(anchor='w', padx=12)
 
         sel_btn = tk.Frame(parent, bg='white')
@@ -416,7 +416,7 @@ class App(tk.Tk):
                    command=self._clear_all).pack(side='left', expand=True, fill='x', padx=(2, 0))
 
         self.sel_status_var = tk.StringVar(value="")
-        tk.Label(parent, textvariable=self.sel_status_var, font=('Segoe UI', 8),
+        tk.Label(parent, textvariable=self.sel_status_var, font=('Segoe UI', 10),
                  bg='white', fg='#1565c0', wraplength=240,
                  justify='left').pack(anchor='w', padx=12)
 
@@ -441,7 +441,7 @@ class App(tk.Tk):
             f = tk.Frame(parent, bg='white')
             f.pack(anchor='w', padx=12, pady=1, fill='x')
             tk.Label(f, text="  ", bg=bg, width=3, relief='raised').pack(side='left', padx=(0, 6))
-            tk.Label(f, text=label, bg='white', font=('Segoe UI', 8),
+            tk.Label(f, text=label, bg='white', font=('Segoe UI', 10),
                      fg='#37474f').pack(side='left')
 
     def _build_right(self, parent):
@@ -462,32 +462,61 @@ class App(tk.Tk):
         self._build_file_panel(bot_frame)
 
     def _build_periodic_table(self, parent):
+        self._pt_outer  = parent        # used by resize handler
+        self._pt_BW     = 56            # current cell width
+        self._pt_BH     = 44            # current cell height
+        self._pt_PAD    = 1
+        self._pt_zoom   = 1.0           # manual zoom multiplier
+        self._pt_all_frames = []        # (frame, 'cell'|'spacer') for bulk resize
+
+        # Zoom toolbar
+        zoom_bar = tk.Frame(parent, bg='#eceff1')
+        zoom_bar.pack(fill='x', padx=4, pady=(2, 0))
+        tk.Label(zoom_bar, text="Periodic Table", font=('Segoe UI', 10, 'bold'),
+                 bg='#eceff1', fg='#37474f').pack(side='left', padx=(2, 6))
+        tk.Button(zoom_bar, text="−", font=('Segoe UI', 11, 'bold'),
+                  command=lambda: self._pt_zoom_by(-0.15), relief='flat',
+                  bg='#cfd8dc', width=2, cursor='hand2').pack(side='left')
+        tk.Button(zoom_bar, text="+", font=('Segoe UI', 11, 'bold'),
+                  command=lambda: self._pt_zoom_by(+0.15), relief='flat',
+                  bg='#cfd8dc', width=2, cursor='hand2').pack(side='left', padx=(2, 0))
+
         self._pt_frame = tk.Frame(parent, bg='#eceff1')
-        self._pt_frame.pack(anchor='center', padx=4, pady=4)
+        self._pt_frame.pack(fill='both', expand=True, padx=2, pady=2)
 
-        BW, BH, PAD = 54, 42, 1
+        BW, BH, PAD = self._pt_BW, self._pt_BH, self._pt_PAD
 
+        # Lanthanide / Actinide placeholder cells
+        self._pt_placeholders = []
         for row, col, txt in [(5, 2, '57–71'), (6, 2, '89–103')]:
             f = tk.Frame(self._pt_frame, width=BW, height=BH,
                          bg='#e0e0e0', relief='flat', bd=1)
             f.grid(row=row, column=col, padx=PAD, pady=PAD, sticky='nsew')
             f.grid_propagate(False)
-            tk.Label(f, text=txt, font=('Segoe UI', 7), bg='#e0e0e0',
-                     fg='#9e9e9e').place(relx=0.5, rely=0.5, anchor='center')
+            lbl = tk.Label(f, text=txt, font=('Segoe UI', 7), bg='#e0e0e0', fg='#9e9e9e')
+            lbl.place(relx=0.5, rely=0.5, anchor='center')
+            self._pt_placeholders.append(f)
+            self._pt_all_frames.append((f, 'cell'))
 
+        # Row 7 spacer
+        self._pt_spacers = []
         for col in range(18):
-            tk.Frame(self._pt_frame, width=BW, height=8,
-                     bg='#eceff1').grid(row=7, column=col, padx=PAD)
+            f = tk.Frame(self._pt_frame, width=BW, height=8, bg='#eceff1')
+            f.grid(row=7, column=col, padx=PAD)
+            self._pt_spacers.append(f)
+            self._pt_all_frames.append((f, 'spacer'))
 
+        # Series labels
         for row, txt in [(8, 'Lantha-\nnides'), (9, 'Acti-\nnides')]:
-            tk.Label(self._pt_frame, text=txt, font=('Segoe UI', 7),
+            tk.Label(self._pt_frame, text=txt, font=('Segoe UI', 8),
                      bg='#eceff1', fg='#78909c', justify='right',
                      anchor='e').grid(row=row, column=0, columnspan=2,
                                       sticky='e', padx=(0, 4))
 
+        # Element buttons
         for sym, disp_row, disp_col in PERIODIC_TABLE_LAYOUT:
-            cat = CATEGORY.get(sym, 'transition')
-            an  = ATOMIC_NUMBERS.get(sym, '')
+            cat    = CATEGORY.get(sym, 'transition')
+            an     = ATOMIC_NUMBERS.get(sym, '')
             dim_bg = DIM_COLOR.get(cat, '#e0e0e0')
 
             fr = tk.Frame(self._pt_frame, width=BW, height=BH,
@@ -495,11 +524,11 @@ class App(tk.Tk):
             fr.grid(row=disp_row, column=disp_col, padx=PAD, pady=PAD, sticky='nsew')
             fr.grid_propagate(False)
 
-            an_lbl = tk.Label(fr, text=str(an), font=('Segoe UI', 6),
+            an_lbl = tk.Label(fr, text=str(an), font=('Segoe UI', 7),
                                bg=dim_bg, fg='#bdbdbd')
             an_lbl.place(x=2, y=1)
 
-            sym_lbl = tk.Label(fr, text=sym, font=('Segoe UI', 10, 'bold'),
+            sym_lbl = tk.Label(fr, text=sym, font=('Segoe UI', 11, 'bold'),
                                 bg=dim_bg, fg='#bdbdbd')
             sym_lbl.place(relx=0.5, rely=0.62, anchor='center')
 
@@ -509,9 +538,60 @@ class App(tk.Tk):
                 w.bind('<Leave>',    lambda e, s=sym: self._on_hover(s, False))
 
             self._btn_widgets[sym] = (fr, an_lbl, sym_lbl, cat)
+            self._pt_all_frames.append((fr, 'cell'))
 
         for c in range(18):
             self._pt_frame.grid_columnconfigure(c, minsize=BW + 2 * PAD)
+
+        # Bind resize and scroll-wheel zoom on the outer container
+        parent.bind('<Configure>', self._on_pt_resize, add='+')
+        self._pt_frame.bind('<MouseWheel>', self._on_pt_scroll, add='+')
+
+    def _on_pt_resize(self, event):
+        """Recompute cell size whenever the periodic-table pane is resized."""
+        if event.widget is not self._pt_outer:
+            return
+        avail_w = max(event.width - 8, 18 * 40)
+        base_BW = max(40, avail_w // 19)
+        BW = max(28, int(base_BW * self._pt_zoom))
+        BH = max(22, int(BW * 44 / 56))
+        if abs(BW - self._pt_BW) < 2:
+            return
+        self._pt_BW, self._pt_BH = BW, BH
+        self._apply_pt_size(BW, BH)
+
+    def _on_pt_scroll(self, event):
+        """Scroll-wheel zoom on the periodic table."""
+        self._pt_zoom_by(0.1 if event.delta > 0 else -0.1)
+
+    def _pt_zoom_by(self, delta):
+        """Adjust zoom factor and redraw periodic table cells."""
+        self._pt_zoom = max(0.3, min(3.0, self._pt_zoom + delta))
+        avail_w = max(self._pt_outer.winfo_width() - 8, 18 * 40)
+        base_BW = max(40, avail_w // 19)
+        BW = max(28, int(base_BW * self._pt_zoom))
+        BH = max(22, int(BW * 44 / 56))
+        self._pt_BW, self._pt_BH = BW, BH
+        self._apply_pt_size(BW, BH)
+
+    def _apply_pt_size(self, BW, BH):
+        PAD = self._pt_PAD
+        sym_fs = max(8,  BW // 5)
+        an_fs  = max(6,  BW // 9)
+
+        for c in range(18):
+            self._pt_frame.grid_columnconfigure(c, minsize=BW + 2 * PAD)
+
+        for f, kind in self._pt_all_frames:
+            if kind == 'spacer':
+                f.configure(width=BW)
+            else:
+                f.configure(width=BW, height=BH)
+
+        for sym, (fr, an_lbl, sym_lbl, cat) in self._btn_widgets.items():
+            fr.configure(width=BW, height=BH)
+            an_lbl.configure(font=('Segoe UI', an_fs))
+            sym_lbl.configure(font=('Segoe UI', sym_fs, 'bold'))
 
     def _build_mid_results(self, parent):
         """Alloy expression box + per-element stats table."""
@@ -545,7 +625,7 @@ class App(tk.Tk):
         cols = ('Element', 'Z', 'Mean at% (renorm)', '± σ', 'N spots', 'Mean mass%')
         self.tree = ttk.Treeview(tbl, columns=cols, show='headings')
         for col, w, anc in zip(cols,
-                               [75, 40, 140, 80, 65, 110],
+                               [130, 80, 220, 150, 130, 200],
                                ['center','center','center','center','center','center']):
             self.tree.heading(col, text=col, command=lambda c=col: self._sort_tree(c))
             self.tree.column(col, width=w, anchor=anc)
@@ -555,7 +635,7 @@ class App(tk.Tk):
         self.tree.pack(side='left', fill='both', expand=True)
         vsb2.pack(side='right', fill='y')
         self.tree.tag_configure('incl', background='#e8f5e9',
-                                font=('Segoe UI', 9, 'bold'))
+                                font=('Segoe UI', 22, 'bold'))
         self.tree.tag_configure('excl', foreground='#bdbdbd')
 
     def _build_file_panel(self, parent):
@@ -564,7 +644,7 @@ class App(tk.Tk):
         file_hdr.pack(fill='x', padx=4, pady=(4, 2))
         tk.Label(file_hdr,
                  text="Per-file composition (selected elements, renormalized)",
-                 font=('Segoe UI', 9, 'bold'), fg='#1565c0',
+                 font=('Segoe UI', 14, 'bold'), fg='#1565c0',
                  bg='#eceff1').pack(side='left', anchor='w')
         ttk.Button(file_hdr, text="Export CSV",
                    command=self._export_file_table).pack(side='right', padx=(4, 0))
@@ -887,18 +967,19 @@ class App(tk.Tk):
             self._file_tbl_frame, columns=display_cols, show='headings',
             height=min(len(self.files_data) + 1, 5))
 
+        UCOL = 140  # uniform column width
         self.file_tree.heading('File', text='File')
-        self.file_tree.column('File', width=160, anchor='w', stretch=False)
+        self.file_tree.column('File', width=UCOL, anchor='w', stretch=False)
         self.file_tree.heading('Composition', text='Composition')
-        self.file_tree.column('Composition', width=190, anchor='w', stretch=True)
-        for col, w in [('Total sec.', 70), ('Defined', 65), ('Undefined', 75)]:
+        self.file_tree.column('Composition', width=UCOL, anchor='w', stretch=False)
+        for col in ('Total sec.', 'Defined', 'Undefined'):
             self.file_tree.heading(col, text=col)
-            self.file_tree.column(col, width=w, anchor='center', stretch=False)
+            self.file_tree.column(col, width=UCOL, anchor='center', stretch=False)
         for e in incl_elems:
             self.file_tree.heading(f"{e} at%", text=f"{e} at%")
-            self.file_tree.column(f"{e} at%", width=72, anchor='center', stretch=False)
+            self.file_tree.column(f"{e} at%", width=UCOL, anchor='center', stretch=False)
             self.file_tree.heading(f"{e} σ", text=f"{e} σ")
-            self.file_tree.column(f"{e} σ", width=62, anchor='center', stretch=False)
+            self.file_tree.column(f"{e} σ", width=UCOL, anchor='center', stretch=False)
 
         hsb = ttk.Scrollbar(self._file_tbl_frame, orient='horizontal',
                              command=self.file_tree.xview)
@@ -912,7 +993,7 @@ class App(tk.Tk):
         self._file_tbl_frame.grid_columnconfigure(0, weight=1)
 
         self.file_tree.tag_configure('focused',
-            background='#fff3e0', font=('Segoe UI', 9, 'bold'))
+            background='#fff3e0', font=('Segoe UI', 22, 'bold'))
         self.file_tree.tag_configure('has_undef',
             foreground='#e65100')  # orange text if any undefined sections
 
