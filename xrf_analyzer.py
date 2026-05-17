@@ -446,20 +446,34 @@ class App(tk.Tk):
 
     def _build_right(self, parent):
         # Vertical pane: periodic table | main results | per-file table
-        v_pane = ttk.PanedWindow(parent, orient='vertical')
-        v_pane.pack(fill='both', expand=True)
+        self._v_pane = ttk.PanedWindow(parent, orient='vertical')
+        self._v_pane.pack(fill='both', expand=True)
 
-        pt_frame = ttk.Frame(v_pane, style='Outer.TFrame')
-        v_pane.add(pt_frame, weight=0)
+        pt_frame = ttk.Frame(self._v_pane, style='Outer.TFrame')
+        self._v_pane.add(pt_frame, weight=1)
         self._build_periodic_table(pt_frame)
 
-        mid_frame = ttk.Frame(v_pane, style='Outer.TFrame')
-        v_pane.add(mid_frame, weight=2)
+        mid_frame = ttk.Frame(self._v_pane, style='Outer.TFrame')
+        self._v_pane.add(mid_frame, weight=3)
         self._build_mid_results(mid_frame)
 
-        bot_frame = ttk.Frame(v_pane, style='Outer.TFrame')
-        v_pane.add(bot_frame, weight=1)
+        bot_frame = ttk.Frame(self._v_pane, style='Outer.TFrame')
+        self._v_pane.add(bot_frame, weight=2)
         self._build_file_panel(bot_frame)
+
+        # Set initial sash positions once the window is fully drawn
+        self.after(200, self._set_initial_sash)
+
+    def _set_initial_sash(self):
+        """Pin sash positions so the PT pane doesn't swallow the tables."""
+        total = self._v_pane.winfo_height()
+        if total < 200:
+            self.after(100, self._set_initial_sash)
+            return
+        pt_h  = min(260, total // 4)
+        mid_h = int((total - pt_h) * 0.60)
+        self._v_pane.sashpos(0, pt_h)
+        self._v_pane.sashpos(1, pt_h + mid_h)
 
     def _build_periodic_table(self, parent):
         self._pt_outer  = parent        # used by resize handler
@@ -481,8 +495,11 @@ class App(tk.Tk):
                   command=lambda: self._pt_zoom_by(+0.15), relief='flat',
                   bg='#cfd8dc', width=2, cursor='hand2').pack(side='left', padx=(2, 0))
 
-        self._pt_frame = tk.Frame(parent, bg='#eceff1')
-        self._pt_frame.pack(fill='both', expand=True, padx=2, pady=2)
+        # Wrapper fills the pane; _pt_frame is centered inside it
+        self._pt_wrapper = tk.Frame(parent, bg='#eceff1')
+        self._pt_wrapper.pack(fill='both', expand=True, padx=2, pady=2)
+
+        self._pt_frame = tk.Frame(self._pt_wrapper, bg='#eceff1')
 
         BW, BH, PAD = self._pt_BW, self._pt_BH, self._pt_PAD
 
@@ -543,13 +560,16 @@ class App(tk.Tk):
         for c in range(18):
             self._pt_frame.grid_columnconfigure(c, minsize=BW + 2 * PAD)
 
-        # Bind resize and scroll-wheel zoom on the outer container
-        parent.bind('<Configure>', self._on_pt_resize, add='+')
+        # Initial centered placement; kept in sync by _apply_pt_size
+        self._pt_frame.place(relx=0.5, y=0, anchor='n')
+
+        # Bind resize on wrapper; scroll-wheel zoom on grid
+        self._pt_wrapper.bind('<Configure>', self._on_pt_resize, add='+')
         self._pt_frame.bind('<MouseWheel>', self._on_pt_scroll, add='+')
 
     def _on_pt_resize(self, event):
         """Recompute cell size whenever the periodic-table pane is resized."""
-        if event.widget is not self._pt_outer:
+        if event.widget is not self._pt_wrapper:
             return
         avail_w = max(event.width - 8, 18 * 40)
         base_BW = max(40, avail_w // 19)
@@ -567,7 +587,7 @@ class App(tk.Tk):
     def _pt_zoom_by(self, delta):
         """Adjust zoom factor and redraw periodic table cells."""
         self._pt_zoom = max(0.3, min(3.0, self._pt_zoom + delta))
-        avail_w = max(self._pt_outer.winfo_width() - 8, 18 * 40)
+        avail_w = max(self._pt_wrapper.winfo_width() - 8, 18 * 40)
         base_BW = max(40, avail_w // 19)
         BW = max(28, int(base_BW * self._pt_zoom))
         BH = max(22, int(BW * 44 / 56))
@@ -592,6 +612,9 @@ class App(tk.Tk):
             fr.configure(width=BW, height=BH)
             an_lbl.configure(font=('Segoe UI', an_fs))
             sym_lbl.configure(font=('Segoe UI', sym_fs, 'bold'))
+
+        # Re-center grid after size change
+        self._pt_frame.place(relx=0.5, y=0, anchor='n')
 
     def _build_mid_results(self, parent):
         """Alloy expression box + per-element stats table."""
@@ -969,17 +992,17 @@ class App(tk.Tk):
 
         UCOL = 140  # uniform column width
         self.file_tree.heading('File', text='File')
-        self.file_tree.column('File', width=UCOL, anchor='w', stretch=False)
+        self.file_tree.column('File', width=UCOL, anchor='w')
         self.file_tree.heading('Composition', text='Composition')
-        self.file_tree.column('Composition', width=UCOL, anchor='w', stretch=False)
+        self.file_tree.column('Composition', width=UCOL, anchor='w')
         for col in ('Total sec.', 'Defined', 'Undefined'):
             self.file_tree.heading(col, text=col)
-            self.file_tree.column(col, width=UCOL, anchor='center', stretch=False)
+            self.file_tree.column(col, width=UCOL, anchor='center')
         for e in incl_elems:
             self.file_tree.heading(f"{e} at%", text=f"{e} at%")
-            self.file_tree.column(f"{e} at%", width=UCOL, anchor='center', stretch=False)
+            self.file_tree.column(f"{e} at%", width=UCOL, anchor='center')
             self.file_tree.heading(f"{e} σ", text=f"{e} σ")
-            self.file_tree.column(f"{e} σ", width=UCOL, anchor='center', stretch=False)
+            self.file_tree.column(f"{e} σ", width=UCOL, anchor='center')
 
         hsb = ttk.Scrollbar(self._file_tbl_frame, orient='horizontal',
                              command=self.file_tree.xview)
