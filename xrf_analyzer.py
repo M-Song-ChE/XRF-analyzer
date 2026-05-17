@@ -341,17 +341,17 @@ class App(tk.Tk):
         s.theme_use('clam')
         s.configure('Outer.TFrame', background='#eceff1')
         s.configure('Side.TFrame',  background='#ffffff')
-        s.configure('TLabel',       background='#eceff1', font=('Segoe UI', 11))
-        s.configure('SideH.TLabel', background='#ffffff', font=('Segoe UI', 12, 'bold'),
+        s.configure('TLabel',       background='#eceff1', font=('Segoe UI', 9))
+        s.configure('SideH.TLabel', background='#ffffff', font=('Segoe UI', 10, 'bold'),
                     foreground='#1565c0')
-        s.configure('TButton',      font=('Segoe UI', 11), padding=5)
-        s.configure('Treeview',     font=('Segoe UI', 22), rowheight=52)
-        s.configure('Treeview.Heading', font=('Segoe UI', 22, 'bold'))
+        s.configure('TButton',      font=('Segoe UI', 9), padding=4)
+        s.configure('Treeview',     font=('Segoe UI', 18), rowheight=42)
+        s.configure('Treeview.Heading', font=('Segoe UI', 18, 'bold'))
 
     def _build_sidebar(self, parent):
-        tk.Label(parent, text="XRF Data Analyzer", font=('Segoe UI', 14, 'bold'),
+        tk.Label(parent, text="XRF Data Analyzer", font=('Segoe UI', 11, 'bold'),
                  fg='#1565c0', bg='white').pack(anchor='w', padx=12, pady=(12, 2))
-        tk.Label(parent, text="mass% → atomic fraction", font=('Segoe UI', 10),
+        tk.Label(parent, text="mass% → atomic fraction", font=('Segoe UI', 8),
                  fg='#607d8b', bg='white').pack(anchor='w', padx=12, pady=(0, 8))
 
         ttk.Separator(parent).pack(fill='x', padx=8)
@@ -365,7 +365,7 @@ class App(tk.Tk):
         vsb = ttk.Scrollbar(lb_frame)
         vsb.pack(side='right', fill='y')
         self.lb = tk.Listbox(lb_frame, yscrollcommand=vsb.set, selectmode='single',
-                             font=('Segoe UI', 11), height=7, activestyle='none',
+                             font=('Segoe UI', 9), height=7, activestyle='none',
                              bg='#f5f5f5', relief='solid', borderwidth=1,
                              highlightthickness=0)
         self.lb.pack(side='left', fill='both', expand=True)
@@ -390,12 +390,12 @@ class App(tk.Tk):
         ttk.Label(parent, text="Current View", style='SideH.TLabel').pack(
             anchor='w', padx=12, pady=(8, 2))
         self.view_var = tk.StringVar(value="—")
-        tk.Label(parent, textvariable=self.view_var, font=('Segoe UI', 11),
+        tk.Label(parent, textvariable=self.view_var, font=('Segoe UI', 9),
                  bg='white', fg='#e65100', wraplength=240,
                  justify='left').pack(anchor='w', padx=12)
 
         self.summary_var = tk.StringVar(value="No data loaded.")
-        tk.Label(parent, textvariable=self.summary_var, font=('Segoe UI', 11),
+        tk.Label(parent, textvariable=self.summary_var, font=('Segoe UI', 9),
                  bg='white', fg='#37474f', wraplength=240,
                  justify='left').pack(anchor='w', padx=12, pady=(4, 0))
 
@@ -405,7 +405,7 @@ class App(tk.Tk):
         ttk.Label(parent, text="Element Selection", style='SideH.TLabel').pack(
             anchor='w', padx=12, pady=(4, 2))
         tk.Label(parent, text="Click elements on the table to\ntoggle them in/out of the\ncomposition calculation.",
-                 font=('Segoe UI', 10), bg='white', fg='#607d8b',
+                 font=('Segoe UI', 8), bg='white', fg='#607d8b',
                  justify='left').pack(anchor='w', padx=12)
 
         sel_btn = tk.Frame(parent, bg='white')
@@ -416,7 +416,7 @@ class App(tk.Tk):
                    command=self._clear_all).pack(side='left', expand=True, fill='x', padx=(2, 0))
 
         self.sel_status_var = tk.StringVar(value="")
-        tk.Label(parent, textvariable=self.sel_status_var, font=('Segoe UI', 10),
+        tk.Label(parent, textvariable=self.sel_status_var, font=('Segoe UI', 8),
                  bg='white', fg='#1565c0', wraplength=240,
                  justify='left').pack(anchor='w', padx=12)
 
@@ -445,7 +445,7 @@ class App(tk.Tk):
                      fg='#37474f').pack(side='left')
 
     def _build_right(self, parent):
-        # Vertical pane: periodic table | main results | per-file table
+        # Vertical pane: periodic table | per-element table | per-file table
         self._v_pane = ttk.PanedWindow(parent, orient='vertical')
         self._v_pane.pack(fill='both', expand=True)
 
@@ -470,17 +470,17 @@ class App(tk.Tk):
         if total < 200:
             self.after(100, self._set_initial_sash)
             return
-        pt_h  = min(260, total // 4)
-        mid_h = int((total - pt_h) * 0.60)
+        pt_h  = min(240, total // 4)
+        mid_h = int((total - pt_h) * 0.55)
         self._v_pane.sashpos(0, pt_h)
         self._v_pane.sashpos(1, pt_h + mid_h)
 
     def _build_periodic_table(self, parent):
         self._pt_outer  = parent        # used by resize handler
-        self._pt_BW     = 56            # current cell width
-        self._pt_BH     = 44            # current cell height
+        self._pt_BW     = 28            # current cell width
+        self._pt_BH     = 22            # current cell height
         self._pt_PAD    = 1
-        self._pt_zoom   = 1.0           # manual zoom multiplier
+        self._pt_zoom   = 0.5           # manual zoom multiplier (0.5 = half natural size)
         self._pt_all_frames = []        # (frame, 'cell'|'spacer') for bulk resize
 
         # Zoom toolbar
@@ -617,33 +617,9 @@ class App(tk.Tk):
         self._pt_frame.place(relx=0.5, y=0, anchor='n')
 
     def _build_mid_results(self, parent):
-        """Alloy expression box + per-element stats table."""
-        hdr = tk.Frame(parent, bg='#eceff1')
-        hdr.pack(fill='x', padx=4, pady=(4, 2))
-        self.result_title = tk.Label(hdr,
-            text="Load CSV files, then select elements to compute composition.",
-            font=('Segoe UI', 10, 'bold'), fg='#1565c0', bg='#eceff1', anchor='w')
-        self.result_title.pack(side='left', anchor='w')
-
-        # Alloy expression: symbol bold-large, subscript numbers below
-        alloy_outer = tk.Frame(parent, bg='#1565c0', bd=2, relief='flat')
-        alloy_outer.pack(fill='x', padx=4, pady=(0, 4))
-        self.alloy_text = tk.Text(
-            alloy_outer, height=2, font=('Segoe UI', 13),
-            fg='#1a237e', bg='#e8eaf6', relief='flat',
-            wrap='word', padx=10, pady=6, state='disabled', cursor='arrow')
-        self.alloy_text.pack(fill='x')
-        # 'sym' = element symbol (bold large); 'sub' = subscript number (smaller, low)
-        self.alloy_text.tag_configure('sym',
-            font=('Segoe UI', 15, 'bold'), foreground='#1a237e')
-        self.alloy_text.tag_configure('sub',
-            font=('Segoe UI', 10), foreground='#b71c1c', offset=-3)
-        self.alloy_text.tag_configure('err',
-            font=('Segoe UI', 9), foreground='#9e9e9e', offset=0)
-
-        # Per-element stats table
+        """Per-element stats table."""
         tbl = tk.Frame(parent, bg='#eceff1')
-        tbl.pack(fill='both', expand=True, padx=4, pady=(0, 4))
+        tbl.pack(fill='both', expand=True, padx=4, pady=4)
 
         cols = ('Element', 'Z', 'Mean at% (renorm)', '± σ', 'N spots', 'Mean mass%')
         self.tree = ttk.Treeview(tbl, columns=cols, show='headings')
@@ -658,7 +634,7 @@ class App(tk.Tk):
         self.tree.pack(side='left', fill='both', expand=True)
         vsb2.pack(side='right', fill='y')
         self.tree.tag_configure('incl', background='#e8f5e9',
-                                font=('Segoe UI', 22, 'bold'))
+                                font=('Segoe UI', 18, 'bold'))
         self.tree.tag_configure('excl', foreground='#bdbdbd')
 
     def _build_file_panel(self, parent):
@@ -667,7 +643,7 @@ class App(tk.Tk):
         file_hdr.pack(fill='x', padx=4, pady=(4, 2))
         tk.Label(file_hdr,
                  text="Per-file composition (selected elements, renormalized)",
-                 font=('Segoe UI', 14, 'bold'), fg='#1565c0',
+                 font=('Segoe UI', 11, 'bold'), fg='#1565c0',
                  bg='#eceff1').pack(side='left', anchor='w')
         ttk.Button(file_hdr, text="Export CSV",
                    command=self._export_file_table).pack(side='right', padx=(4, 0))
@@ -876,34 +852,18 @@ class App(tk.Tk):
     def _update_results(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
-        self.alloy_text.configure(state='normal')
-        self.alloy_text.delete('1.0', 'end')
-        self.alloy_text.configure(state='disabled')
 
         subset = self._current_files()
-        if not subset:
-            self.result_title.configure(
-                text="Load CSV files, then select elements to compute composition.")
+        if not subset or not self.included:
             self._rebuild_file_table([])
             return
 
         active = self._current_active()
 
-        if not self.included:
-            self.result_title.configure(
-                text="No elements selected — click elements on the periodic table.")
-            self._rebuild_file_table([])
-            return
-
-        # Stats for included elements only — sections where all selected
-        # elements are 0 are excluded (undefined composition).
         incl_elems, mean_af, std_af, n_valid, n_total = compute_stats_for(
             subset, included=self.included)
-
-        # Raw stats for ALL detected elements (used for excluded-element rows)
         all_elems, mean_af_raw, std_af_raw, _, _ = compute_stats_for(subset)
 
-        # Mean mass% from raw data
         mass_bucket = defaultdict(list)
         for elems_f, rows in subset.values():
             for _, _, mf in rows:
@@ -911,42 +871,18 @@ class App(tk.Tk):
                 for e in active:
                     mass_bucket[e].append(mf_dict.get(e, 0.0))
 
-        # Title — show valid / total section counts
-        view_label = (f"Sample: {os.path.basename(self.focused_path)}"
-                      if self.focused_path else
-                      f"All {len(self.files_data)} file(s) combined")
-        n_undef = n_total - n_valid
-        undef_str = f"  |  {n_undef} section(s) undefined (Pt=Ni=0)" if n_undef else ""
-        self.result_title.configure(
-            text=(f"{view_label}  |  {len(self.included)} element(s) selected  |  "
-                  f"{n_valid}/{n_total} valid sections{undef_str}"))
-
-        # ── Alloy expression — e.g.  Pt₄₅.₃(±2.1) Ni₅₄.₇(±1.8) ──
-        self.alloy_text.configure(state='normal')
-        for e in incl_elems:
-            pct   = mean_af[e] * 100
-            sigma = std_af[e] * 100
-            self.alloy_text.insert('end', e, 'sym')
-            self.alloy_text.insert('end', to_sub(f"{pct:.1f}"), 'sub')
-            self.alloy_text.insert('end', f"(±{sigma:.1f}) ", 'err')
-        self.alloy_text.configure(state='disabled')
-
-        # ── Per-element table ──
         for e in all_elems:
             if mean_af_raw.get(e, 0) <= 0 and e not in active:
                 continue
             is_incl = e in self.included
-
             if is_incl:
                 pct_col   = f"{mean_af.get(e, 0)*100:.2f}"
                 sigma_col = f"{std_af.get(e, 0)*100:.2f}"
             else:
                 pct_col   = f"({mean_af_raw.get(e, 0)*100:.2f})"
                 sigma_col = f"({std_af_raw.get(e, 0)*100:.2f})"
-
-            mvals = mass_bucket.get(e, [])
+            mvals     = mass_bucket.get(e, [])
             mean_mass = float(np.mean(mvals)) if mvals else 0.0
-
             tags = ('incl',) if is_incl else ('excl',)
             self.tree.insert('', 'end',
                 values=(e, ATOMIC_NUMBERS.get(e, ''),
@@ -955,7 +891,6 @@ class App(tk.Tk):
                         f"{mean_mass:.2f}"),
                 tags=tags)
 
-        # ── Per-file breakdown table ──
         self._rebuild_file_table(incl_elems)
 
     @staticmethod
@@ -1016,7 +951,7 @@ class App(tk.Tk):
         self._file_tbl_frame.grid_columnconfigure(0, weight=1)
 
         self.file_tree.tag_configure('focused',
-            background='#fff3e0', font=('Segoe UI', 22, 'bold'))
+            background='#fff3e0', font=('Segoe UI', 18, 'bold'))
         self.file_tree.tag_configure('has_undef',
             foreground='#e65100')  # orange text if any undefined sections
 
